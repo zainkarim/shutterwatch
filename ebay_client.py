@@ -1,5 +1,5 @@
 """
-ebay_client.py — eBay API integration for SnapWatch.
+ebay_client.py — eBay API integration for ShutterWatch.
 
 Handles:
   - OAuth2 app token acquisition and caching (Browse API, client credentials flow)

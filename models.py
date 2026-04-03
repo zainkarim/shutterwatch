@@ -1,5 +1,5 @@
 """
-models.py — SQLAlchemy database models for SnapWatch.
+models.py — SQLAlchemy database models for ShutterWatch.
 
 Tables:
   searches  — records of each camera search performed

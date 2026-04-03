@@ -1,5 +1,5 @@
 """
-scheduler.py — APScheduler background job for SnapWatch.
+scheduler.py — APScheduler background job for ShutterWatch.
 
 Runs a saved-search check every 24 hours:
   - Queries all Alert records from the database

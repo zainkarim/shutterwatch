@@ -1,5 +1,5 @@
 """
-discord_client.py — Discord webhook integration for SnapWatch price alerts.
+discord_client.py — Discord webhook integration for ShutterWatch price alerts.
 
 Sends a formatted embed message to a Discord channel when eBay listings
 are found below a user's saved price threshold.
@@ -55,7 +55,7 @@ def send_price_alert(
     extra = f" (+{count - 5} more)" if count > 5 else ""
 
     payload = {
-        "username": "SnapWatch",
+        "username": "ShutterWatch",
         "embeds": [
             {
                 "title": f"Price Alert: {camera_model}",
@@ -66,7 +66,7 @@ def send_price_alert(
                 "color": 3066993,  # #2ecc71 — green
                 "fields": fields,
                 "footer": {
-                    "text": f"SnapWatch \u2022 Threshold: ${threshold:.2f} \u2022 {camera_model}"
+                    "text": f"ShutterWatch \u2022 Threshold: ${threshold:.2f} \u2022 {camera_model}"
                 },
                 "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z"),
             }

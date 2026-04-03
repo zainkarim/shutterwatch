@@ -1,5 +1,5 @@
 """
-config.py — Centralized configuration for SnapWatch.
+config.py — Centralized configuration for ShutterWatch.
 Loads all settings from environment variables so nothing is hardcoded.
 """
 
@@ -23,7 +23,7 @@ class Config:
 
     # SQLite database path
     # Uses /data/ (Render persistent disk) in production, local file in development
-    _db_path = "/data/snapwatch.db" if os.path.isdir("/data") else "snapwatch.db"
+    _db_path = "/data/shutterwatch.db" if os.path.isdir("/data") else "shutterwatch.db"
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{_db_path}"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 

@@ -1,11 +1,10 @@
-# SnapWatch
+# ShutterWatch
 
 A used camera price tracker with AI market analysis. Search eBay for active camera listings, get Claude-powered market summaries, and set price alerts that fire Discord notifications.
 
 ## Screenshot
 
-![SnapWatch Dashboard](screenshot-placeholder.png)
-<!-- Replace with an actual screenshot after first deploy -->
+![ShutterWatch Dashboard](screenshot.png)
 
 ---
 
@@ -14,7 +13,7 @@ A used camera price tracker with AI market analysis. Search eBay for active came
 - **eBay Search** — query active listings filtered to the camera category (ID 625)
 - **Price Statistics** — average, median, low, high, and listing count
 - **AI Market Summary** — Claude analyzes listings and writes a 3-4 sentence market assessment
-- **Price Alerts** — save a camera model + threshold; SnapWatch checks eBay every 24 hours and pings Discord when a match is found
+- **Price Alerts** — save a camera model + threshold; ShutterWatch checks eBay every 24 hours and pings Discord when a match is found
 - **LLM Condition Filter** — optional AI assessment to flag broken/parts-only listings and exclude them from price averages
 
 ---
@@ -25,7 +24,7 @@ A used camera price tracker with AI market analysis. Search eBay for active came
 
 ```bash
 git clone <your-repo-url>
-cd snapwatch
+cd shutterwatch
 ```
 
 ### 2. Create a virtual environment
@@ -85,7 +84,7 @@ Open [http://localhost:5000](http://localhost:5000) in your browser.
 
 1. Open your Discord server settings
 2. Go to **Integrations > Webhooks > New Webhook**
-3. Name it "SnapWatch", select a channel, and copy the webhook URL
+3. Name it "ShutterWatch", select a channel, and copy the webhook URL
 
 ---
 
@@ -109,7 +108,7 @@ Open [http://localhost:5000](http://localhost:5000) in your browser.
 ## Project Structure
 
 ```
-snapwatch/
+shutterwatch/
 ├── app.py               # Flask app factory + API routes
 ├── config.py            # Environment variable loading + constants
 ├── models.py            # SQLAlchemy models (Search, Listing, Alert)

@@ -1,5 +1,5 @@
 """
-app.py — Flask application factory and API routes for SnapWatch.
+app.py — Flask application factory and API routes for ShutterWatch.
 
 Routes:
   GET  /                       Serve the single-page app

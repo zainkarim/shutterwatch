@@ -1,5 +1,5 @@
 """
-claude_client.py — Anthropic Claude API integration for SnapWatch.
+claude_client.py — Anthropic Claude API integration for ShutterWatch.
 
 Provides two functions:
   get_market_summary()      — AI-generated market analysis for a camera search

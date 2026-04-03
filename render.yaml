@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: snapwatch
+    name: shutterwatch
     runtime: python
     buildCommand: pip install -r requirements.txt
     # Single gunicorn worker for Render free tier — avoids SQLite write contention
@@ -23,6 +23,6 @@ services:
     # Persistent disk is required — Render's default filesystem resets on every deploy,
     # which would wipe the SQLite database. The disk survives deploys and restarts.
     disk:
-      name: snapwatch-db
+      name: shutterwatch-db
       mountPath: /data
       sizeGB: 1
