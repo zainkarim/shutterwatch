@@ -88,23 +88,6 @@ Open [http://localhost:5000](http://localhost:5000) in your browser.
 
 ---
 
-## Deploying to Render
-
-1. Push your repo to GitHub
-2. Go to [render.com](https://render.com/) and create a new **Web Service**
-3. Connect your GitHub repo
-4. Render will detect `render.yaml` and configure the service automatically
-5. In the **Environment** tab, add your secret environment variables:
-   - `EBAY_CLIENT_ID`
-   - `EBAY_CLIENT_SECRET`
-   - `ANTHROPIC_API_KEY`
-   - `DISCORD_WEBHOOK_URL` (optional)
-6. Click **Deploy**
-
-> **Note:** The `render.yaml` configures a 1 GB persistent disk at `/data` to store the SQLite database across deploys. This is a paid add-on on Render (~$0.25/GB/month). Alternatively, you can remove the `disk:` section and accept that the database resets on each deploy.
-
----
-
 ## Project Structure
 
 ```
