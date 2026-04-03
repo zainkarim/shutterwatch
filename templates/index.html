@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SnapWatch — Used Camera Price Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- ================================================================
+       HEADER
+  ================================================================ -->
+  <header class="site-header">
+    <div class="container">
+      <h1 class="site-title">Snap<span>Watch</span></h1>
+      <p class="site-tagline">Used camera price tracker &amp; AI market analysis</p>
+    </div>
+  </header>
+
+  <!-- ================================================================
+       MAIN CONTENT
+  ================================================================ -->
+  <main>
+    <div class="container">
+
+      <!-- Search Form -->
+      <section class="search-section">
+        <form class="search-form" id="searchForm">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="e.g. Canon AE-1, Sony A7III, Nikon FM2"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button type="submit" class="btn btn-primary" id="searchBtn">Search eBay</button>
+        </form>
+
+        <!-- Recent search history chips -->
+        <div id="historySection" class="hidden" style="margin-top:1rem;">
+          <div class="form-label" style="margin-bottom:0.4rem;">Recent searches</div>
+          <div class="history-list" id="historyList"></div>
+        </div>
+      </section>
+
+      <!-- Loading Spinner -->
+      <div class="spinner-wrap hidden" id="spinner">
+        <div class="spinner"></div>
+        <span>Searching eBay and generating AI analysis&hellip;</span>
+      </div>
+
+      <!-- Error Banner -->
+      <div class="error-banner hidden" id="errorBanner"></div>
+
+      <!-- ================================================================
+           RESULTS SECTION (hidden until a search is performed)
+      ================================================================ -->
+      <section class="hidden" id="resultsSection">
+
+        <p class="data-notice">
+          Showing active eBay listings &mdash; prices reflect current asking prices, not final sale prices.
+        </p>
+
+        <!-- Price Stats Cards -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Average</div>
+            <div class="stat-value" id="statAvg">&mdash;</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Median</div>
+            <div class="stat-value" id="statMedian">&mdash;</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Lowest</div>
+            <div class="stat-value" id="statLow">&mdash;</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Highest</div>
+            <div class="stat-value" id="statHigh">&mdash;</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Listings</div>
+            <div class="stat-value count" id="statCount">&mdash;</div>
+          </div>
+        </div>
+
+        <!-- eBay Sold Price History Chart -->
+        <div class="card chart-card hidden" id="soldChartCard">
+          <div class="chart-header">
+            <span class="chart-title" id="soldChartTitle">eBay Sold Prices &mdash; Recent Sales</span>
+            <span class="chart-subtitle" id="soldChartSubtitle"></span>
+          </div>
+          <canvas id="soldPriceChart"></canvas>
+          <p class="chart-empty hidden" id="soldChartEmpty">No sold listing data found for this camera.</p>
+        </div>
+
+        <!-- Local Search History Chart -->
+        <div class="card chart-card hidden" id="searchChartCard">
+          <div class="chart-header">
+            <span class="chart-title">Your Search History</span>
+            <span class="chart-subtitle" id="searchChartSubtitle"></span>
+          </div>
+          <canvas id="searchPriceChart"></canvas>
+          <p class="chart-empty hidden" id="searchChartEmpty">Search this camera again later to see price trends.</p>
+        </div>
+
+        <!-- AI Market Summary -->
+        <div class="summary-card">
+          <div class="summary-label">AI Market Analysis</div>
+          <p class="summary-text" id="summaryText"></p>
+        </div>
+
+        <!-- Listings Table -->
+        <div class="results-header">
+          <div class="results-title" id="resultsTitle">Listings</div>
+          <div class="filter-row">
+            <label id="hideFlaggedLabel" class="hidden">
+              <input type="checkbox" id="hideFlagged" />
+              Hide flagged listings
+            </label>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Price</th>
+                <th>Condition</th>
+                <th>Link</th>
+              </tr>
+            </thead>
+            <tbody id="listingsBody"></tbody>
+          </table>
+        </div>
+
+        <!-- LLM Condition Filter (stretch goal) -->
+        <div class="assess-section" id="assessSection">
+          <button class="btn btn-secondary" id="assessBtn" onclick="runConditionAssessment()">
+            Assess listing conditions with AI
+          </button>
+          <span class="assess-note" id="assessNote">
+            Uses Claude to flag broken, parts-only, or damaged listings.
+          </span>
+        </div>
+
+      </section>
+
+      <!-- ================================================================
+           SAVED ALERTS SECTION
+      ================================================================ -->
+      <hr class="section-divider" />
+
+      <section id="alertsSection">
+        <h2 class="section-title">Price Alerts</h2>
+
+        <form class="alert-form" id="alertForm">
+          <div class="form-group">
+            <label class="form-label" for="alertModel">Camera Model</label>
+            <input
+              type="text"
+              id="alertModel"
+              class="form-input"
+              placeholder="e.g. Canon AE-1"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="alertThreshold">Alert below price ($)</label>
+            <input
+              type="number"
+              id="alertThreshold"
+              class="form-input"
+              placeholder="e.g. 100"
+              min="1"
+              step="0.01"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="alertWebhook">Discord Webhook URL (optional)</label>
+            <input
+              type="url"
+              id="alertWebhook"
+              class="form-input"
+              placeholder="https://discord.com/api/webhooks/..."
+            />
+          </div>
+          <button type="submit" class="btn btn-primary">Save Alert</button>
+        </form>
+
+        <div id="alertSuccess" class="hidden" style="color:#38a169;font-size:0.88rem;margin-bottom:1rem;">
+          Alert saved! SnapWatch will check eBay every 24 hours and ping Discord when a match is found.
+        </div>
+
+        <div class="alerts-list" id="alertsList">
+          <p class="no-alerts">No saved alerts yet.</p>
+        </div>
+      </section>
+
+    </div><!-- /.container -->
+  </main>
+
+  <!-- ================================================================
+       JAVASCRIPT — Single-Page App Logic
+  ================================================================ -->
+  <script>
+    // ----------------------------------------------------------------
+    // State
+    // ----------------------------------------------------------------
+    let currentCameraModel = '';   // Last searched model (used when saving an alert)
+    let currentSearchId = null;    // Search ID from last API response
+    let currentListings = [];      // Full listings array from last search
+    let showFlagged = true;        // Whether to show flagged listings in the table
+
+    // Chart instances — destroyed and recreated on each search to avoid canvas reuse errors
+    let soldChartInstance = null;
+    let searchChartInstance = null;
+
+    // ----------------------------------------------------------------
+    // DOM helpers
+    // ----------------------------------------------------------------
+    const $ = id => document.getElementById(id);
+
+    function showEl(id)  { $(id).classList.remove('hidden'); }
+    function hideEl(id)  { $(id).classList.add('hidden');    }
+    function setHtml(id, html) { $(id).innerHTML = html;     }
+
+    function fmt(n) {
+      // Format a number as USD price string
+      return '$' + Number(n).toFixed(2);
+    }
+
+    // ----------------------------------------------------------------
+    // Search
+    // ----------------------------------------------------------------
+    $('searchForm').addEventListener('submit', handleSearch);
+
+    async function handleSearch(e) {
+      e.preventDefault();
+
+      const cameraModel = $('searchInput').value.trim();
+      if (!cameraModel) return;
+
+      // Update state and UI
+      currentCameraModel = cameraModel;
+      $('searchBtn').disabled = true;
+      $('searchBtn').textContent = 'Searching…';
+      showEl('spinner');
+      hideEl('resultsSection');
+      hideEl('errorBanner');
+
+      try {
+        const res = await fetch('/api/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ camera_model: cameraModel }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Search failed. Please try again.');
+        }
+
+        renderResults(data);
+        // Pre-fill the alert model field with the searched camera
+        $('alertModel').value = cameraModel;
+        // Refresh search history
+        loadSearchHistory();
+
+      } catch (err) {
+        $('errorBanner').textContent = err.message || 'An unexpected error occurred.';
+        showEl('errorBanner');
+      } finally {
+        hideEl('spinner');
+        $('searchBtn').disabled = false;
+        $('searchBtn').textContent = 'Search eBay';
+      }
+    }
+
+    // ----------------------------------------------------------------
+    // Render search results
+    // ----------------------------------------------------------------
+    function renderResults(data) {
+      currentSearchId = data.search_id;
+      currentListings = data.listings || [];
+
+      // Stat cards
+      const s = data.stats || {};
+      $('statAvg').textContent    = s.count ? fmt(s.average) : '—';
+      $('statMedian').textContent = s.count ? fmt(s.median)  : '—';
+      $('statLow').textContent    = s.count ? fmt(s.low)     : '—';
+      $('statHigh').textContent   = s.count ? fmt(s.high)    : '—';
+      $('statCount').textContent  = s.count || 0;
+
+      // AI summary
+      $('summaryText').textContent = data.summary || 'No summary available.';
+
+      // Results title
+      $('resultsTitle').textContent =
+        `${currentListings.length} listing${currentListings.length !== 1 ? 's' : ''} for "${data.camera_model}"`;
+
+      // Render table
+      renderListingsTable(currentListings);
+
+      // Show assess button; reset its state
+      $('assessBtn').textContent = 'Assess listing conditions with AI';
+      $('assessBtn').disabled = false;
+      $('assessNote').textContent = 'Uses Claude to flag broken, parts-only, or damaged listings.';
+      hideEl('hideFlaggedLabel');
+
+      showEl('resultsSection');
+
+      // Load price history charts (run in background — don't block the results render)
+      loadSoldHistory(data.camera_model);
+      loadSearchPriceHistory(data.camera_model);
+    }
+
+    // ----------------------------------------------------------------
+    // Listings table rendering
+    // ----------------------------------------------------------------
+    function renderListingsTable(listings) {
+      const tbody = $('listingsBody');
+
+      if (!listings.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#718096;padding:2rem;">No listings found.</td></tr>';
+        return;
+      }
+
+      const rows = listings
+        .filter(l => showFlagged || !l.flagged)
+        .map(l => {
+          const flaggedBadge = l.flagged
+            ? `<span class="badge badge-flagged" title="${escHtml(l.flag_reason || 'Flagged by AI')}">Flagged</span>`
+            : '';
+          return `
+            <tr class="${l.flagged ? 'flagged-row' : ''}">
+              <td class="listing-title">
+                <a href="${escHtml(l.url)}" target="_blank" rel="noopener">${escHtml(l.title)}</a>
+                ${flaggedBadge}
+              </td>
+              <td class="price-cell">${fmt(l.price)}</td>
+              <td class="condition-cell">${escHtml(l.condition || 'Unknown')}</td>
+              <td><a href="${escHtml(l.url)}" target="_blank" rel="noopener" class="btn btn-secondary" style="padding:0.3rem 0.7rem;font-size:0.8rem;">View ↗</a></td>
+            </tr>`;
+        }).join('');
+
+      tbody.innerHTML = rows ||
+        '<tr><td colspan="4" style="text-align:center;color:#718096;padding:2rem;">All listings hidden by filter.</td></tr>';
+    }
+
+    // Toggle flagged listings visibility
+    $('hideFlagged').addEventListener('change', function () {
+      showFlagged = !this.checked;
+      renderListingsTable(currentListings);
+    });
+
+    // ----------------------------------------------------------------
+    // LLM Condition Assessment (stretch goal)
+    // ----------------------------------------------------------------
+    async function runConditionAssessment() {
+      if (!currentSearchId) return;
+
+      $('assessBtn').disabled = true;
+      $('assessBtn').textContent = 'Assessing…';
+      $('assessNote').textContent = 'Claude is reviewing each listing title. This may take a minute.';
+
+      try {
+        const res = await fetch(`/api/assess/${currentSearchId}`, { method: 'POST' });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || 'Assessment failed.');
+
+        // Merge flagged status back into currentListings
+        const listingMap = {};
+        (data.listings || []).forEach(l => { listingMap[l.id] = l; });
+        currentListings = currentListings.map(l => listingMap[l.id] || l);
+
+        $('assessNote').textContent =
+          `Assessment complete: ${data.flagged} of ${data.assessed} listings flagged.`;
+        $('assessBtn').textContent = 'Re-assess';
+        $('assessBtn').disabled = false;
+
+        if (data.flagged > 0) {
+          showEl('hideFlaggedLabel');
+        }
+
+        renderListingsTable(currentListings);
+
+      } catch (err) {
+        $('assessNote').textContent = 'Assessment failed: ' + (err.message || 'Unknown error');
+        $('assessBtn').disabled = false;
+        $('assessBtn').textContent = 'Retry assessment';
+      }
+    }
+
+    // ----------------------------------------------------------------
+    // Alerts
+    // ----------------------------------------------------------------
+    $('alertForm').addEventListener('submit', handleSaveAlert);
+
+    async function handleSaveAlert(e) {
+      e.preventDefault();
+      hideEl('alertSuccess');
+
+      const cameraModel = $('alertModel').value.trim();
+      const priceThreshold = $('alertThreshold').value.trim();
+      const discordWebhookUrl = $('alertWebhook').value.trim();
+
+      if (!cameraModel) {
+        alert('Please enter a camera model for the alert.');
+        return;
+      }
+
+      const threshold = parseFloat(priceThreshold);
+      if (!priceThreshold || isNaN(threshold) || threshold <= 0) {
+        alert('Please enter a valid price threshold greater than $0.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/alerts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            camera_model: cameraModel,
+            price_threshold: threshold,
+            discord_webhook_url: discordWebhookUrl || null,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to save alert.');
+
+        showEl('alertSuccess');
+        setTimeout(() => hideEl('alertSuccess'), 5000);
+
+        // Clear form fields
+        $('alertThreshold').value = '';
+        $('alertWebhook').value = '';
+
+        loadAlerts();
+
+      } catch (err) {
+        alert('Error: ' + (err.message || 'Could not save alert.'));
+      }
+    }
+
+    async function loadAlerts() {
+      try {
+        const res = await fetch('/api/alerts');
+        const alerts = await res.json();
+
+        const container = $('alertsList');
+
+        if (!Array.isArray(alerts) || alerts.length === 0) {
+          container.innerHTML = '<p class="no-alerts">No saved alerts yet.</p>';
+          return;
+        }
+
+        container.innerHTML = alerts.map(a => `
+          <div class="alert-item" data-alert-id="${a.id}">
+            <div class="alert-info">
+              <div class="alert-model">${escHtml(a.camera_model)}</div>
+              <div class="alert-meta">
+                Alert below <strong>${fmt(a.price_threshold)}</strong>
+                ${a.last_checked ? ` &bull; Last checked: ${formatDate(a.last_checked)}` : ' &bull; Not checked yet'}
+                ${a.discord_webhook_url ? ' &bull; Discord ✓' : ''}
+              </div>
+            </div>
+            <button class="btn btn-danger" onclick="deleteAlert(${a.id})">Delete</button>
+          </div>
+        `).join('');
+
+      } catch (err) {
+        console.error('Failed to load alerts:', err);
+      }
+    }
+
+    async function deleteAlert(id) {
+      if (!confirm('Delete this alert?')) return;
+
+      try {
+        const res = await fetch(`/api/alerts/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Delete failed');
+        loadAlerts();
+      } catch (err) {
+        alert('Could not delete alert. Please try again.');
+      }
+    }
+
+    // ----------------------------------------------------------------
+    // Search History
+    // ----------------------------------------------------------------
+    async function loadSearchHistory() {
+      try {
+        const res = await fetch('/api/searches');
+        const searches = await res.json();
+
+        if (!Array.isArray(searches) || searches.length === 0) {
+          hideEl('historySection');
+          return;
+        }
+
+        // Deduplicate by camera model, most recent first
+        const seen = new Set();
+        const unique = searches.filter(s => {
+          if (seen.has(s.camera_model)) return false;
+          seen.add(s.camera_model);
+          return true;
+        });
+
+        const list = $('historyList');
+        list.innerHTML = unique.map(s =>
+          `<button class="history-chip" onclick="quickSearch('${escAttr(s.camera_model)}')">${escHtml(s.camera_model)}</button>`
+        ).join('');
+
+        showEl('historySection');
+
+      } catch (err) {
+        console.error('Failed to load search history:', err);
+      }
+    }
+
+    function quickSearch(model) {
+      $('searchInput').value = model;
+      $('searchForm').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    }
+
+    // ----------------------------------------------------------------
+    // Price History Charts
+    // ----------------------------------------------------------------
+
+    /**
+     * Build a Chart.js price band chart (average + median lines, low-high fill).
+     * Used for both the sold history chart and the search history chart.
+     *
+     * @param {string} canvasId   - ID of the <canvas> element
+     * @param {Chart|null} existing - Previous chart instance to destroy first
+     * @param {string[]} labels   - X-axis labels
+     * @param {number[]} avgs     - Average prices per label
+     * @param {number[]} medians  - Median prices per label
+     * @param {number[]} lows     - Low prices per label (used for range band)
+     * @param {number[]} highs    - High prices per label (used for range band)
+     * @returns {Chart} New Chart.js instance
+     */
+    function buildPriceChart(canvasId, existing, labels, avgs, medians, lows, highs) {
+      if (existing) existing.destroy();
+
+      const ctx = $(canvasId).getContext('2d');
+      return new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            // Low line — transparent, used only as the bottom boundary of the fill band
+            {
+              label: 'Low',
+              data: lows,
+              borderColor: 'transparent',
+              backgroundColor: 'rgba(43,108,176,0.08)',
+              pointRadius: 0,
+              fill: '+1',  // fill between this dataset and the next (High)
+              tension: 0.3,
+              order: 4,
+            },
+            // High line — transparent, top boundary of the fill band
+            {
+              label: 'High',
+              data: highs,
+              borderColor: 'transparent',
+              backgroundColor: 'transparent',
+              pointRadius: 0,
+              fill: false,
+              tension: 0.3,
+              order: 3,
+            },
+            // Average — solid blue line
+            {
+              label: 'Average',
+              data: avgs,
+              borderColor: '#2b6cb0',
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              pointBackgroundColor: '#2b6cb0',
+              tension: 0.3,
+              order: 1,
+            },
+            // Median — dashed gray line
+            {
+              label: 'Median',
+              data: medians,
+              borderColor: '#718096',
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              borderDash: [5, 4],
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              pointBackgroundColor: '#718096',
+              tension: 0.3,
+              order: 2,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              // Only show Average and Median in the legend, not the fill-band lines
+              labels: {
+                filter: item => item.text === 'Average' || item.text === 'Median',
+                boxWidth: 12,
+                font: { size: 12 },
+              },
+            },
+            tooltip: {
+              callbacks: {
+                // Custom tooltip: show avg, median, low, high for the hovered point
+                afterBody(tooltipItems) {
+                  const i = tooltipItems[0].dataIndex;
+                  return [
+                    `Low:    $${Number(lows[i]).toFixed(2)}`,
+                    `High:   $${Number(highs[i]).toFixed(2)}`,
+                  ];
+                },
+                label(item) {
+                  if (item.dataset.label === 'Low' || item.dataset.label === 'High') return null;
+                  return `${item.dataset.label}: $${Number(item.raw).toFixed(2)}`;
+                },
+              },
+            },
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(0,0,0,0.04)' },
+              ticks: { font: { size: 11 } },
+            },
+            y: {
+              grid: { color: 'rgba(0,0,0,0.04)' },
+              ticks: {
+                font: { size: 11 },
+                callback: v => '$' + v.toFixed(0),
+              },
+            },
+          },
+        },
+      });
+    }
+
+    function buildSoldSalesChart(canvasId, existing, sales) {
+      if (existing) existing.destroy();
+      const ctx = $(canvasId).getContext('2d');
+
+      const labels = sales.map(s => fmtChartDate(s.sold_date));
+      const prices = sales.map(s => s.price);
+      const titles = sales.map(s => s.title);
+
+      // Compute overall average and median across all sales
+      const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+      const sorted = [...prices].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      const median = sorted.length % 2 === 0
+        ? (sorted[mid - 1] + sorted[mid]) / 2
+        : sorted[mid];
+
+      const avgLine    = prices.map(() => avg);
+      const medianLine = prices.map(() => median);
+
+      return new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Sale Price',
+              data: prices,
+              borderColor: '#2b6cb0',
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              pointBackgroundColor: '#2b6cb0',
+              tension: 0,
+              fill: false,
+              order: 1,
+            },
+            {
+              label: 'Average',
+              data: avgLine,
+              borderColor: '#e53e3e',
+              backgroundColor: 'transparent',
+              borderWidth: 1.5,
+              borderDash: [6, 4],
+              pointRadius: 0,
+              pointHoverRadius: 0,
+              tension: 0,
+              fill: false,
+              order: 2,
+            },
+            {
+              label: 'Median',
+              data: medianLine,
+              borderColor: '#718096',
+              backgroundColor: 'transparent',
+              borderWidth: 1.5,
+              borderDash: [3, 3],
+              pointRadius: 0,
+              pointHoverRadius: 0,
+              tension: 0,
+              fill: false,
+              order: 3,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              labels: {
+                filter: item => item.text !== 'Sale Price',
+                boxWidth: 20,
+                font: { size: 12 },
+              },
+            },
+            tooltip: {
+              callbacks: {
+                title: items => labels[items[0].dataIndex],
+                label: item => {
+                  if (item.dataset.label === 'Average')
+                    return `Avg: $${avg.toFixed(2)}`;
+                  if (item.dataset.label === 'Median')
+                    return `Median: $${median.toFixed(2)}`;
+                  return `Sale: $${Number(item.raw).toFixed(2)}`;
+                },
+                afterLabel: item => {
+                  if (item.dataset.label !== 'Sale Price') return null;
+                  const t = titles[item.dataIndex];
+                  return t.length > 60 ? t.slice(0, 57) + '\u2026' : t;
+                },
+              },
+            },
+          },
+          scales: {
+            x: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 11 } } },
+            y: {
+              grid: { color: 'rgba(0,0,0,0.04)' },
+              ticks: { font: { size: 11 }, callback: v => '$' + v.toFixed(0) },
+            },
+          },
+        },
+      });
+    }
+
+    // Format an ISO date string as "MMM D" (e.g., "Mar 3")
+    function fmtChartDate(isoStr) {
+      return new Date(isoStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    async function loadSoldHistory(cameraModel) {
+      // Reset chart card to hidden while loading
+      hideEl('soldChartCard');
+
+      try {
+        const res = await fetch('/api/sold-history?' + new URLSearchParams({ camera_model: cameraModel }));
+        if (!res.ok) return;
+        const data = await res.json();
+
+        showEl('soldChartCard');
+
+        if (!data.sales || data.sales.length === 0) {
+          hideEl('soldPriceChart');
+          showEl('soldChartEmpty');
+          $('soldChartSubtitle').textContent = '';
+          return;
+        }
+
+        hideEl('soldChartEmpty');
+        showEl('soldPriceChart');
+
+        soldChartInstance = buildSoldSalesChart('soldPriceChart', soldChartInstance, data.sales);
+
+        const first = fmtChartDate(data.sales[0].sold_date);
+        const last  = fmtChartDate(data.sales[data.sales.length - 1].sold_date);
+        const dateRange = first === last ? first : `${first} \u2013 ${last}`;
+        $('soldChartSubtitle').textContent =
+          `${data.total_sold} sale${data.total_sold !== 1 ? 's' : ''} \u00b7 ${dateRange}`;
+
+      } catch (err) {
+        console.error('Failed to load sold history:', err);
+        hideEl('soldChartCard');
+      }
+    }
+
+    async function loadSearchPriceHistory(cameraModel) {
+      hideEl('searchChartCard');
+
+      try {
+        const res = await fetch('/api/search-history?' + new URLSearchParams({ camera_model: cameraModel }));
+        if (!res.ok) return;
+        const data = await res.json();
+
+        showEl('searchChartCard');
+
+        if (!data.history || data.history.length < 2) {
+          hideEl('searchPriceChart');
+          showEl('searchChartEmpty');
+          $('searchChartSubtitle').textContent =
+            data.history && data.history.length === 1 ? '1 search so far' : '';
+          return;
+        }
+
+        hideEl('searchChartEmpty');
+        showEl('searchPriceChart');
+
+        const labels  = data.history.map(h => fmtChartDate(h.date));
+        const avgs    = data.history.map(h => h.average);
+        const medians = data.history.map(h => h.median);
+        const lows    = data.history.map(h => h.low);
+        const highs   = data.history.map(h => h.high);
+
+        searchChartInstance = buildPriceChart(
+          'searchPriceChart', searchChartInstance, labels, avgs, medians, lows, highs
+        );
+
+        const n = data.history.length;
+        $('searchChartSubtitle').textContent = `${n} search${n !== 1 ? 'es' : ''}`;
+
+      } catch (err) {
+        console.error('Failed to load search price history:', err);
+        hideEl('searchChartCard');
+      }
+    }
+
+    // ----------------------------------------------------------------
+    // Utility functions
+    // ----------------------------------------------------------------
+    function escHtml(str) {
+      // Escape HTML special characters to prevent XSS
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function escAttr(str) {
+      // Escape for use in single-quoted HTML attribute values
+      return String(str || '').replace(/'/g, "\\'");
+    }
+
+    function formatDate(isoString) {
+      try {
+        return new Date(isoString).toLocaleDateString('en-US', {
+          month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+        });
+      } catch {
+        return isoString;
+      }
+    }
+
+    // ----------------------------------------------------------------
+    // Init — load alerts and history on page load
+    // ----------------------------------------------------------------
+    loadAlerts();
+    loadSearchHistory();
+  </script>
+
+</body>
+</html>

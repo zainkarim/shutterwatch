@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: snapwatch
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    # Single gunicorn worker for Render free tier — avoids SQLite write contention
+    # Timeout is extended to 120s because eBay + Claude API calls can take 10-20s combined
+    startCommand: gunicorn app:app --workers 1 --bind 0.0.0.0:$PORT --timeout 120
+    envVars:
+      # eBay OAuth2 credentials — set these in the Render dashboard
+      - key: EBAY_CLIENT_ID
+        sync: false
+      - key: EBAY_CLIENT_SECRET
+        sync: false
+      # Anthropic API key
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # Discord webhook URL for price alerts (optional)
+      - key: DISCORD_WEBHOOK_URL
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+    # Persistent disk is required — Render's default filesystem resets on every deploy,
+    # which would wipe the SQLite database. The disk survives deploys and restarts.
+    disk:
+      name: snapwatch-db
+      mountPath: /data
+      sizeGB: 1
